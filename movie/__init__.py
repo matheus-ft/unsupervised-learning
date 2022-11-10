@@ -1,4 +1,4 @@
-from .movies import (
+from .movie import (
     cofiCostFunc,
     normalizeRatings,
     gradientDescent,
