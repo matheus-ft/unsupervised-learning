@@ -1,6 +1,3 @@
-# Ignoring notebooks for purposes of good versioning practices
-*.ipynb
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
