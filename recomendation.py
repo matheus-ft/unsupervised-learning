@@ -5,22 +5,18 @@ from movie import (
     gradientDescent,
 )
 import numpy as np
+import numpy.random as npr
 import matplotlib.pyplot as plt
-from scipy.io import loadmat
+import scipy.io as sio
 
 # %%
-mat3 = loadmat("data/ex8_movies.mat")
-mat4 = loadmat("data/ex8_movieParams.mat")
-Y = mat3["Y"]
-R = mat3["R"]
-X = mat4["X"]
-Theta = mat4["Theta"]
+data = sio.loadmat("data/dado2.mat")
+Y = data["Y"]
+R = data["R"]
 
 # %%
 print(
-    "Average rating for movie 1 (Toy Story):",
-    np.sum(Y[0, :] * R[0, :]) / np.sum(R[0, :]),
-    "/5",
+    f"Average rating for movie 1 (Toy Story): {np.sum(Y[0, :]*R[0, :]) / np.sum(R[0, :]):.2f}/5"
 )
 
 # %%
@@ -30,72 +26,26 @@ plt.xlabel("Users")
 plt.ylabel("Movies")
 
 # %%
-num_users, num_movies, num_features = 4, 5, 3
-X_test = X[:num_movies, :num_features]
-Theta_test = Theta[:num_users, :num_features]
-Y_test = Y[:num_movies, :num_users]
-R_test = R[:num_movies, :num_users]
-params = np.append(X_test.flatten(), Theta_test.flatten())
+n_movies, n_users = Y.shape
+n_features = 100
+X = npr.randn(n_movies, n_features)
+Theta = npr.randn(n_users, n_features)
+params = np.append(X.flatten(), Theta.flatten())
 
 # %%
-J, grad = cofiCostFunc(params, Y_test, R_test, num_users, num_movies, num_features, 0)[
-    :2
-]
-print("Custo sobre os parâmetros carregados:", J)
-
-# %%
-J2, grad2 = cofiCostFunc(
-    params, Y_test, R_test, num_users, num_movies, num_features, 1.5
-)[2:]
-print("Custo sobre os parâmetros carregados (lambda = 1.5):", J2)
+J, grad = cofiCostFunc(params, Y, R, n_users, n_movies, n_features, 0)[:2]
+print("Custo sobre os parâmetros carregados: ", J)
 
 # %%
 movieList = open("data/dado3.txt", "r").read().split("\n")[:-1]
-# movieList
-
-# %%
-my_ratings = np.zeros((1682, 1))
-
-# %%
-my_ratings[0] = 4
-my_ratings[97] = 2
-my_ratings[6] = 3
-my_ratings[11] = 5
-my_ratings[53] = 4
-my_ratings[63] = 5
-my_ratings[65] = 3
-my_ratings[68] = 5
-my_ratings[82] = 4
-my_ratings[225] = 5
-my_ratings[354] = 5
-
-# %%
-print("Notas do novo usuário:\n")
-for i in range(len(my_ratings)):
-    if my_ratings[i] > 0:
-        print("Nota", int(my_ratings[i]), "para o índice", movieList[i])
-
-# %%
-Y = np.hstack((my_ratings, Y))
-R = np.hstack((my_ratings != 0, R))
+movieList
 
 # %%
 Ynorm, Ymean = normalizeRatings(Y, R)
 
 # %%
-num_users = Y.shape[1]
-num_movies = Y.shape[0]
-num_features = 10
-
-# %%
-X = np.random.randn(num_movies, num_features)
-Theta = np.random.randn(num_users, num_features)
-initial_parameters = np.append(X.flatten(), Theta.flatten())
-Lambda = 10
-
-# %%
 paramsFinal, J_history = gradientDescent(
-    initial_parameters, Ynorm, R, num_users, num_movies, num_features, 0.001, 20, Lambda
+    params, Ynorm, R, n_users, n_movies, n_features, 0.001, 20, 0
 )
 plt.plot(J_history)
 plt.xlabel("Iterações")
@@ -103,8 +53,8 @@ plt.ylabel("$J(\Theta)$")
 plt.title("Função de Custo usando Gradiente Descendente")
 
 # %%
-X = paramsFinal[: num_movies * num_features].reshape(num_movies, num_features)
-Theta = paramsFinal[num_movies * num_features :].reshape(num_users, num_features)
+X = paramsFinal[: n_movies * n_features].reshape(n_movies, n_features)
+Theta = paramsFinal[n_movies * n_features :].reshape(n_users, n_features)
 
 # %%
 p = X @ Theta.T
