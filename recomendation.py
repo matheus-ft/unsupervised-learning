@@ -1,13 +1,9 @@
 # %%
-from movie import (
-    compute_cost,
-    normalize_ratings,
-    gradientDescent,
-)
+from movie import compute_cost, fit, predict, init_random_matrix
 import numpy as np
-import numpy.random as npr
 import matplotlib.pyplot as plt
 import scipy.io as sio
+import pandas as pd
 
 # %%
 data = sio.loadmat("data/dado2.mat")
@@ -22,52 +18,40 @@ print(
 # %%
 plt.figure(figsize=(8, 16))
 plt.imshow(Y)
-plt.xlabel("Users")
 plt.ylabel("Movies")
+plt.xlabel("Users")
 
 # %%
 n_movies, n_users = Y.shape
 n_features = 100
-X = npr.randn(n_movies, n_features)
-Theta = npr.randn(n_users, n_features)
+X = init_random_matrix(n_movies, n_features)
+Theta = init_random_matrix(n_users, n_features)
 params = np.append(X.flatten(), Theta.flatten())
 
 # %%
-J, grad = compute_cost(X, Theta, Y, R)
-print("Custo sobre os parâmetros carregados: ", J)
+J = compute_cost(X, Theta, Y, R)
+print("Loss over random parameters: ", J)
+
+# %%
+maxiter = 200
+epsilon = 1e-6
+trained_params, Y_mean = fit(X, Theta, Y, R, maxiter, epsilon)
+
+# %%
+X = trained_params[: n_movies * n_features].reshape(n_movies, n_features)
+Theta = trained_params[n_movies * n_features :].reshape(n_users, n_features)
+predictions = predict(X, Theta, Y_mean)
 
 # %%
 movieList = open("data/dado3.txt", "r").read().split("\n")[:-1]
 movieList
 
 # %%
-Ynorm, Ymean = normalize_ratings(Y, R)
-
-# %%
-paramsFinal, J_history = gradientDescent(
-    params, Ynorm, R, n_users, n_movies, n_features, 0.001, 20, 0
-)
-plt.plot(J_history)
-plt.xlabel("Iterações")
-plt.ylabel("$J(\Theta)$")
-plt.title("Função de Custo usando Gradiente Descendente")
-
-# %%
-X = paramsFinal[: n_movies * n_features].reshape(n_movies, n_features)
-Theta = paramsFinal[n_movies * n_features :].reshape(n_users, n_features)
-
-# %%
-p = X @ Theta.T
-my_predictions = p[:, 0][:, np.newaxis] + Ymean
-
-# %%
-import pandas as pd
-
-df = pd.DataFrame(np.hstack((my_predictions, np.array(movieList)[:, np.newaxis])))
+df = pd.DataFrame(np.hstack((predictions, np.array(movieList)[:, np.newaxis])))
 df.sort_values(by=[0], ascending=False, inplace=True)
 df.reset_index(drop=True, inplace=True)
 
 # %%
-print("Melhores recomendações para você:\n")
+print("Best recomendations:\n")
 for i in range(10):
-    print("Nota predita", round(float(df[0][i]), 1), " para o índice", df[1][i])
+    print("Predicted ", round(float(df[0][i]), 1), " for index", df[1][i])

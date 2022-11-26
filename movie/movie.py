@@ -1,62 +1,126 @@
 import numpy as np
+import numpy.random as npr
+from scipy.optimize import minimize, OptimizeResult
 
 
-def compute_cost(X, Theta, Y, R):
-    predictions = X @ Theta.T
-    err = predictions - Y
-    J = 1 / 2 * np.sum((err**2) * R)
-
-    X_grad = err * R @ Theta
-    Theta_grad = (err * R).T @ X
-    grad = np.append(X_grad.flatten(), Theta_grad.flatten())
-
-    return J, grad
+def compute_cost(
+    X: np.ndarray, Theta: np.ndarray, Y: np.ndarray, R: np.ndarray
+) -> float:
+    params = np.append(X.flatten(), Theta.flatten())
+    n_movies, n_features = X.shape
+    n_users = Theta.shape[0]
+    args = (Y, R, n_movies, n_users, n_features)
+    return _loss(params, *args)
 
 
-def normalize_ratings(Y, R):
+def normalize_ratings(Y: np.ndarray, R: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     m, n = Y.shape[0], Y.shape[1]
-    Ymean = np.zeros((m, 1))
-    Ynorm = np.zeros((m, n))
-
+    Y_mean = np.zeros((m, 1))
+    Y_norm = np.zeros((m, n))
     for i in range(m):
-        Ymean[i] = np.sum(Y[i, :]) / np.count_nonzero(R[i, :])
-        Ynorm[i, R[i, :] == 1] = Y[i, R[i, :] == 1] - Ymean[i]
+        Y_mean[i] = np.sum(Y[i, :]) / np.count_nonzero(R[i, :])
+        Y_norm[i, R[i, :] == 1] = Y[i, R[i, :] == 1] - Y_mean[i]
+    return Y_norm, Y_mean
 
-    return Ynorm, Ymean
+
+def init_random_matrix(m: int, n: int) -> np.ndarray:
+    epi = (6 ** (1 / 2)) / (m + n - 1) ** (1 / 2)
+    M = npr.rand(m, n) * (2 * epi) - epi
+    return M
 
 
-def gradientDescent(
-    initial_parameters,
-    Y,
-    R,
-    num_users,
-    num_movies,
-    num_features,
-    alpha,
-    num_iters,
-    Lambda,
-):
+def _infer_ratings(X: np.ndarray, Theta: np.ndarray) -> np.ndarray:
+    return X @ Theta.T
 
-    X = initial_parameters[: num_movies * num_features].reshape(
-        num_movies, num_features
+
+def predict(X: np.ndarray, Theta: np.ndarray, Y_mean: np.ndarray) -> np.ndarray:
+    return _infer_ratings(X, Theta) + Y_mean
+
+
+def _error(X: np.ndarray, Theta: np.ndarray, Y: np.ndarray) -> np.ndarray:
+    return _infer_ratings(X, Theta) - Y
+
+
+def _loss(params: np.ndarray, *args) -> float:
+    """Computes the loss function of the model.
+
+    Parameters
+    ----------
+    params : np.ndarray
+        1-D array of all features and their weights concatenated
+
+    *args : sequence of arguments
+        Must be (Y, R, n_m, n_u, n_f)
+
+    Returns
+    -------
+    float
+        value of the loss function
+    """
+    Y, R, n_movies, n_users, n_features = args
+    X = params[: n_movies * n_features].reshape(n_movies, n_features)
+    Theta = params[n_movies * n_features :].reshape(n_users, n_features)
+    error_vec = _error(X, Theta, Y)
+    J = np.sum(error_vec**2 * R) / 2
+    return J
+
+
+def _gradient(params: np.ndarray, *args) -> np.ndarray:
+    """Gradient of the hypothesis function.
+
+    Parameters
+    ----------
+    params : np.ndarray
+        1-D array of all features and their weights concatenated
+
+    *args : sequence of arguments
+        Must be (Y, R, n_m, n_u, n_f)
+
+    Returns
+    -------
+    np.ndarray
+        gradient vector (as 1-d array)
+    """
+    Y, R, n_movies, n_users, n_features = args
+    X = params[: n_movies * n_features].reshape(n_movies, n_features)
+    Theta = params[n_movies * n_features :].reshape(n_users, n_features)
+    error_vec = _error(X, Theta, Y)
+    D_X = error_vec * R @ Theta
+    D_Theta = (error_vec * R).T @ X
+    D = np.append(D_X.flatten(), D_Theta.flatten())
+    return D
+
+
+def fit(
+    X: np.ndarray,
+    Theta: np.ndarray,
+    Y: np.ndarray,
+    R: np.ndarray,
+    maxiter: int,
+    epsilon: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    Y, Y_mean = normalize_ratings(Y, R)
+    optimal = _conjugate_gradient(X, Theta, Y, R, maxiter, epsilon)
+    if optimal.success:
+        return optimal.x, Y_mean
+    raise Exception(
+        f"Conjugate gradient method (via `scipy.optimize.minimize`) failed with the following message:\n{optimal.message}"
     )
-    Theta = initial_parameters[num_movies * num_features :].reshape(
-        num_users, num_features
+
+
+def _conjugate_gradient(
+    X: np.ndarray,
+    Theta: np.ndarray,
+    Y: np.ndarray,
+    R: np.ndarray,
+    maxiter: int,
+    epsilon: float,
+) -> OptimizeResult:
+    params = np.append(X.flatten(), Theta.flatten())
+    n_movies, n_features = X.shape
+    n_users = Theta.shape[0]
+    args = (Y, R, n_movies, n_users, n_features)
+    opts = {"maxiter": maxiter, "disp": True}
+    return minimize(
+        _loss, params, args, method="CG", jac=_gradient, tol=epsilon, options=opts
     )
-
-    J_history = []
-
-    for _ in range(num_iters):
-        params = np.append(X.flatten(), Theta.flatten())
-        cost, grad = compute_cost(
-            params, Y, R, num_users, num_movies, num_features, Lambda
-        )[2:]
-
-        X_grad = grad[: num_movies * num_features].reshape(num_movies, num_features)
-        Theta_grad = grad[num_movies * num_features :].reshape(num_users, num_features)
-        X = X - (alpha * X_grad)
-        Theta = Theta - (alpha * Theta_grad)
-        J_history.append(cost)
-
-    paramsFinal = np.append(X.flatten(), Theta.flatten())
-    return paramsFinal, J_history
