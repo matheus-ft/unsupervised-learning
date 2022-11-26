@@ -1,7 +1,7 @@
 # %%
 from movie import (
-    cofiCostFunc,
-    normalizeRatings,
+    compute_cost,
+    normalize_ratings,
     gradientDescent,
 )
 import numpy as np
@@ -33,7 +33,7 @@ Theta = npr.randn(n_users, n_features)
 params = np.append(X.flatten(), Theta.flatten())
 
 # %%
-J, grad = cofiCostFunc(params, Y, R, n_users, n_movies, n_features, 0)[:2]
+J, grad = compute_cost(X, Theta, Y, R)
 print("Custo sobre os parâmetros carregados: ", J)
 
 # %%
@@ -41,7 +41,7 @@ movieList = open("data/dado3.txt", "r").read().split("\n")[:-1]
 movieList
 
 # %%
-Ynorm, Ymean = normalizeRatings(Y, R)
+Ynorm, Ymean = normalize_ratings(Y, R)
 
 # %%
 paramsFinal, J_history = gradientDescent(
