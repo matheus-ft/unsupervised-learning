@@ -1,5 +1,5 @@
 from .movie import (
-    cofiCostFunc,
-    normalizeRatings,
+    compute_cost,
+    normalize_ratings,
     gradientDescent,
 )
