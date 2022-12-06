@@ -1,10 +1,17 @@
 # Projeto 2 MS/MT-571
 
+<!--toc:start-->
+- [Projeto 2 MS/MT-571](#projeto-2-msmt-571)
+  - [Para rodar o projeto](#para-rodar-o-projeto)
+    - [Requisitos](#requisitos)
+    - [Instruções](#instruções)
+<!--toc:end-->
+
 ## Para rodar o projeto
 
 ### Requisitos
 
-- `python3`
+- `python 3.10+`
 
   - `pip`
 
@@ -14,22 +21,19 @@
 
 Clone o repositório e faça:
 
-```sh
+```bash
 python3 -m venv .env
 source ./.env/bin/activate
 pip install -r requirements.txt
 python -m ipykernel install --name=.env
-jupytext main.py --to notebook
-jupyter lab main.ipynb
+jupyter lab <notebook>.ipynb
 ```
 
-Em seguida execute as células do notebook.
+Em seguida selecione o *kernel* `.env` e execute as células do notebook (note que já apresentamos nossa última execução).
 
 Se forem feitas mudanças no notebook que devem ser salvas, faça:
 
-```sh
-jupytext main.ipynb --to py:percent
+```bash
+jupytext <notebook>.ipynb --to py:percent
 ```
-
-Caso contrário basta reabrir o notebook numa próxima execução.
 
